@@ -492,6 +492,7 @@ sub parse_images {
     #To get all the architectures for string matching.
     my $arch_flattened = join('|', values(%architectures));
     
+    
     # Once Perl 5.10 becomes the default in Mac OS X, named regexp 
     # capture buffers of the style (?<name>pattern) would make this 
     # code much more sane.
@@ -520,6 +521,23 @@ sub parse_images {
                       'bundlename' => \$4, 'arch' => \$5, 'uuid' => \$6,
                       'path' => \$7);
     }
+    elsif($report_version == 9) { # Hajo's mac                                                                                                                                                                    
+#    0x244ca000 - 0x24b06fe7 +com.spratpix.-D-SAD-Shared (1.0 - 1) <561951DA-7604-39E3-830E-769C55D6A7BF> /Library/Frameworks/3D_SAD_Shared.framework/Versions/A/3D_SAD_Shared
+#    0x28800000 - 0x28a7cfe3 +com.spratpix.HPSR3D.Input (1.0.0 - 1.0.0) <82982EED-61DC-320D-B3CF-08AB839927CE> /Library/Application Support/Digidesign/*/3D_SAD_Send
+    
+        $pat = '                                                                                                                                                                                              
+            ^\s* (\w+) \s* \- \s* (\w+) \s*     (?# the range base and extent [1,2] )                                                                                                                                 
+            (\+)?                               (?# the application may have a + in front of the name [3] )                                                                                                   
+            (\S+)                               (?# bundle name [4] )                                                                                                                                                 
+            \s+ (.+) \s+                        (?# the image version [5] )                                                                                                                                          
+            \< (........-....-....-....-............) \>           (?# possible UUID [6] )                                                                                                                                               
+            \s* (\/.*)\s*$                      (?# first fwdslash to end we hope is path [7] )                                                                                                                       
+            ';
+        %captures = ( 'base' => \$1, 'extent' => \$2, 'plus' => \$3,
+                      'bundlename' => \$4, 'version' => \$5, 'uuid' => \$6,
+                      'path' => \$7);
+#        print "captures= %captures"
+    }
     
     for my $line (@lines) {
         next if $line =~ /PEF binary:/; # ignore these
@@ -527,13 +545,21 @@ sub parse_images {
 	$line =~ s/(&(\w+);?)/$entity2char{$2} || $1/eg;
         
 	if ($line =~ /$pat/ox) {
-	    
+	  
             # Dereference references 
             my %image;
             while((my $key, my $val) = each(%captures)) {
                 $image{$key} = ${$captures{$key}} || '';
-				#print "image{$key} = $image{$key}\n";
+				print "image{$key} = $image{$key}\n";
             }
+
+        	  if($report_version == 9) {
+        	    my $uuidd = $image{'uuid'};
+        	    $uuidd =~ s/-//g;
+        	    $image{'uuid'} = $uuidd;
+      				print "UUID = $uuidd\n";
+        	  }
+
 		
 		$image{uuid} = lc $image{uuid};
 		$image{arch} = $image{arch} || $default_arch;
