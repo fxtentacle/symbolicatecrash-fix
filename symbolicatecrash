@@ -222,10 +222,19 @@ sub getSymbolPathFor_dsymUuid{
         foreach $file (@files) {
             print STDERR "$file\n";
             if ($file =~ /(.*)\/(.*).dSYM$/) {
-                print STDERR "using $file\n";
+                print STDERR "checking $file\n";
                 $pathToDsym = quotemeta($1);
                 $dsymBaseName = $2;
                 $executable = $dsymBaseName;
+                
+                
+                my $cmdf = quotemeta($file);
+                my $dsymline = `dwarfdump --uuid $cmdf`;
+                print STDERR "dsymline $dsymline\n";
+                # UUID: 0A4F78DD-B74A-3601-B738-ACB63D76F00D (i386) /Volumes/Backup Sammelsurium/XCode old Archives/2012-04-15/Archives/2012-04-08/Collect for iLok 08.04.12 23.12.xcarchive/dSYMs/3D_SAD_Channel_Out.component.dSYM
+                $dsymline =~ /UUID: (........-....-....-....-............)/;
+                next if $1 ne $myuuid;
+                print STDERR "MATCH !\n";
                 last;
             }
         }
